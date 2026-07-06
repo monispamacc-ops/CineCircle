@@ -92,7 +92,7 @@ if st.button("🔄 Refresh Watchlist Data", use_container_width=True):
     st.info("Loading live records from your Aiven MySQL cloud...")
     try:
         # Tries to hit your exact watchlist query function
-        watchlist_data = db.fetch_watchlist() 
+        watchlist_data = db.get_watchlist()
         if watchlist_data:
             st.dataframe(watchlist_data, use_container_width=True)
         else:
