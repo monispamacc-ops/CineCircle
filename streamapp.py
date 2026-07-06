@@ -92,7 +92,7 @@ st.markdown("### 📊 Community Watchlist Dashboard")
 if st.button("🔄 Refresh Watchlist Data", use_container_width=True):
     st.info("Loading live records from your Aiven MySQL cloud...")
     try:
-        watchlist_data = db.fetch_watchlist() 
+        watchlist_data = db.get_watchlist() 
         if watchlist_data:
             import pandas as pd
             
