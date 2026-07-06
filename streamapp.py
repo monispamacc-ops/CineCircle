@@ -81,27 +81,39 @@ with col2:
     rating_name = st.selectbox("Your Name:", options=user_names, key="rating_user")
     rating_id = user_dict.get(rating_name)
     
-    # Pull dynamic movie choices if available, otherwise fallback
+    # 1. Map movie titles to IDs for the database
     try:
-        watchlist_data = db.get_watchlist() # Updated to get_watchlist()
-        movie_options = list(set([m['title'] for m in watchlist_data])) if watchlist_data else ["Interstellar"]
+        watchlist_data = db.get_watchlist()
+        # Create a dictionary: { 'Title': 'ID' }
+        movie_dict = {m['title']: m['id'] for m in watchlist_data}
+        movie_options = list(movie_dict.keys())
     except Exception:
-        movie_options = ["Interstellar", "Inception"]
-        
-    selected_movie = st.selectbox("Select Movie to Review:", options=movie_options)
+        movie_dict = {"Interstellar": 1, "Inception": 2}
+        movie_options = list(movie_dict.keys())
+
+    selected_movie_title = st.selectbox("Select Movie to Review:", options=movie_options)
+    selected_movie_id = movie_dict.get(selected_movie_title)
     
     rating_score = st.slider("Your Rating Score:", min_value=1, max_value=5, value=5)
     review_line = st.text_area("Write a short review line:", placeholder="Semma ,mass ah iruku")
     
+    # 2. Updated Submit button
     if st.button("Submit Review", use_container_width=True):
         try:
-            # Adjust this to match your rating insertion function when ready!
-            # db.add_rating(selected_movie, rating_id, rating_score, review_line)
+            db.add_rating_to_db(selected_movie_id, rating_id, rating_score, review_line)
             st.success("Review submitted live to cloud backend!")
             st.rerun()
         except Exception as e:
             st.error(f"Error submitting review: {e}")
 
+    # 3. New Delete button
+    if st.button("Delete My Review", use_container_width=True):
+        try:
+            db.delete_review(selected_movie_id, rating_id)
+            st.warning(f"Review for '{selected_movie_title}' deleted.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Error deleting review: {e}")
 st.divider()
 
 # ----------------- BOTTOM SECTION: LIVE TABLE -----------------

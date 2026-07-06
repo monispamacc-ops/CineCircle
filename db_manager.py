@@ -175,6 +175,25 @@ def add_rating_to_db(movie_id, user_id, score, review_text):
         cursor.close()
         conn.close()
 
+def delete_review(movie_id, user_id):
+    """Deletes a user's review for a specific movie."""
+    conn = connect_to_db()
+    if not conn:
+        return
+
+    try:
+        cursor = conn.cursor()
+        # Ensure you use movie_id to match your database structure
+        query = "DELETE FROM ratings WHERE movie_id = %s AND user_id = %s"
+        cursor.execute(query, (movie_id, user_id))
+        conn.commit()
+        print("Review deleted successfully!")
+    except Error as e:
+        print(f"Database error while deleting review: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
 def get_all_users():
     """Fetches all registered users for the UI dropdown menu."""
     conn = connect_to_db()
