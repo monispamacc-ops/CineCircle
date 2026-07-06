@@ -96,15 +96,23 @@ if st.button("🔄 Refresh Watchlist Data", use_container_width=True):
         if watchlist_data:
             import pandas as pd
             
-            # 1. Convert your database records cleanly into a Pandas DataFrame
+            # Convert to DataFrame
             df = pd.DataFrame(watchlist_data)
             
-            # 2. Check if 'avg_rating' exists and turn numbers into star emojis
             if 'avg_rating' in df.columns:
-                # Converts a 5 into "⭐⭐⭐⭐⭐", a 4 into "⭐⭐⭐⭐", etc.
-                df['avg_rating'] = df['avg_rating'].apply(lambda x: "⭐" * int(x) if pd.notnull(x) and str(x).isdigit() or isinstance(x, (int, float)) else x)
+                # Foolproof conversion: handles integers, floats, decimals, and strings perfectly
+                def to_stars(val):
+                    try:
+                        if pd.notnull(val):
+                            num = int(round(float(val))) # Converts 5.0000 -> 5
+                            return "⭐" * num
+                    except (ValueError, TypeError):
+                        pass
+                    return val
+                
+                df['avg_rating'] = df['avg_rating'].apply(to_stars)
             
-            # 3. Display the beautifully formatted table!
+            # Display table cleanly
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.warning("Connected to database, but your movie table is empty!")
