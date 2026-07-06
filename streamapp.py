@@ -86,18 +86,27 @@ with col2:
 st.divider()
 
 # ----------------- BOTTOM SECTION: LIVE TABLE -----------------
+# ----------------- BOTTOM SECTION: LIVE TABLE -----------------
 st.markdown("### 📊 Community Watchlist Dashboard")
 
 if st.button("🔄 Refresh Watchlist Data", use_container_width=True):
     st.info("Loading live records from your Aiven MySQL cloud...")
     try:
-        # Tries to hit your exact watchlist query function
-        watchlist_data = db.get_watchlist()
+        watchlist_data = db.fetch_watchlist() 
         if watchlist_data:
-            st.dataframe(watchlist_data, use_container_width=True)
+            import pandas as pd
+            
+            # 1. Convert your database records cleanly into a Pandas DataFrame
+            df = pd.DataFrame(watchlist_data)
+            
+            # 2. Check if 'avg_rating' exists and turn numbers into star emojis
+            if 'avg_rating' in df.columns:
+                # Converts a 5 into "⭐⭐⭐⭐⭐", a 4 into "⭐⭐⭐⭐", etc.
+                df['avg_rating'] = df['avg_rating'].apply(lambda x: "⭐" * int(x) if pd.notnull(x) and str(x).isdigit() or isinstance(x, (int, float)) else x)
+            
+            # 3. Display the beautifully formatted table!
+            st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.warning("Connected to database, but your movie table is empty!")
-    except AttributeError:
-        st.error("Let's double check if your fetching function inside db_manager.py is named exactly 'fetch_watchlist()'.")
     except Exception as e:
         st.error(f"Error: {e}")
