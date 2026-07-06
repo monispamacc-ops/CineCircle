@@ -83,8 +83,8 @@ with col2:
     
     # Pull dynamic movie choices if available, otherwise fallback
     try:
-        watchlist_data = db.fetch_watchlist()
-        movie_options = list(set([m['title'] if isinstance(m, dict) else m[0] for m in watchlist_data])) if watchlist_data else ["Interstellar"]
+        watchlist_data = db.get_watchlist() # Updated to get_watchlist()
+        movie_options = list(set([m['title'] for m in watchlist_data])) if watchlist_data else ["Interstellar"]
     except Exception:
         movie_options = ["Interstellar", "Inception"]
         
