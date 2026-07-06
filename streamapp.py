@@ -40,8 +40,8 @@ try:
         # Fallback if it returns a list of tuples (id, username)
         user_dict = {u[1]: u[0] for u in raw_users}
 except Exception:
-    # High-fidelity fallbacks matching your system setup if db call fails
-    user_dict = {"Moniha": 1, "Seenu": 2}
+    # High-fidelity fallbacks matching your exact database records in image_e043d9.png
+    user_dict = {"Moniha": 1, "Seenu": 4}
 
 user_names = list(user_dict.keys())
 
