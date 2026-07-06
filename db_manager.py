@@ -6,30 +6,89 @@ def connect_to_db():
     """Establishes and returns a connection to the local MySQL database."""
     try:
         connection = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='Moni@1234', # <-- Put your Workbench password here
-            database='movie_hub'
+            host='mysql-7456575-cinecircle-hub-99.g.aivencloud.com',
+            port=25858,
+            user='avnadmin',
+            password='AVNS_5liDS45j9oGDHGVzTca',
+            database='defaultdb',
+            ssl_disabled=False
         )
         if connection.is_connected():
             return connection
     except Error as e:
-        print(f"Error while connecting to MySQL: {e}")
+        print(f" Error while connecting to MySQL: {e}")
         return None
+
+def create_tables():
+    """Creates the necessary tables in the cloud database using the exact yesterday schema."""
+    conn = connect_to_db()
+    if not conn:
+        return
+    try:
+        cursor = conn.cursor()
+        
+        # Drop old temporary tables to apply the clean yesterday schema
+        #cursor.execute("DROP TABLE IF EXISTS ratings;")
+        #cursor.execute("DROP TABLE IF EXISTS movies;")
+        #cursor.execute("DROP TABLE IF EXISTS users;")
+        
+        # 1. Users Table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(50) NOT NULL UNIQUE
+        );
+        """)
+        
+        # 2. Movies Table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS movies (
+            movie_id VARCHAR(50) PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            release_year INT,
+            genre VARCHAR(100),
+            added_by_user_id INT,
+            FOREIGN KEY (added_by_user_id) REFERENCES users(user_id) ON DELETE SET NULL
+        );
+        """)
+        
+        # 3. Ratings Table
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS ratings (
+            rating_id INT AUTO_INCREMENT PRIMARY KEY,
+            movie_id VARCHAR(50),
+            user_id INT,
+            score INT CHECK (score BETWEEN 1 AND 5),
+            review_text TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (movie_id) REFERENCES movies(movie_id) ON DELETE CASCADE,
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+            UNIQUE(movie_id, user_id)
+        );
+        """)
+        
+        conn.commit()
+        print("Database schema successfully verified in the cloud!")
+    except Error as e:
+        print(f"Error creating tables: {e}")
+    finally:
+        cursor.close()
+        conn.close()
 
 def test_connection():
     """Quick helper function to verify our connection works."""
     print("Testing connection to 'movie_hub' database...")
     conn = connect_to_db()
     if conn:
-        print("🎉 Connection successful! Python can talk to your MySQL server.")
+        print("Connection successful! Python can talk to your MySQL server.")
         conn.close()
     else:
-        print("❌ Connection failed. Check your password or ensure MySQL Server is running.")
+        print("X Connection failed. Check your password or ensure MySQL Server is running.")
 
 # This ensures the test only runs if you execute this file directly
 if __name__ == "__main__":
     test_connection()
+    create_tables()  
 
 def add_user(username):
     """Inserts a new friend into the users table."""
@@ -42,7 +101,7 @@ def add_user(username):
         query = "INSERT INTO users (username) VALUES (%s)"
         cursor.execute(query, (username,))
         conn.commit()
-        print(f"👤 Friend '{username}' added successfully!")
+        print(f" Friend '{username}' added successfully!")
     except Error as e:
         # If the friend is already in the database, MySQL will gracefully let us know
         print(f"Note regarding user '{username}': {e}")
@@ -56,7 +115,7 @@ def add_movie_to_db(movie_title, user_id):
     # 1. Fetch live data from your working API script
     movie_data = fetch_movie_details(movie_title)
     if not movie_data:
-        print("❌ Could not add movie because it wasn't found online.")
+        print(" Could not add movie because it wasn't found online.")
         return
 
     conn = connect_to_db()
@@ -83,10 +142,10 @@ def add_movie_to_db(movie_title, user_id):
         
         cursor.execute(query, values)
         conn.commit()
-        print(f"🎬 '{movie_data['title']}' ({movie_data['release_year']}) successfully saved to your database!")
+        print(f"{movie_data['title']}' ({movie_data['release_year']}) successfully saved to your database!")
         
     except Error as e:
-        print(f"❌ Database error: {e}")
+        print(f"Database error: {e}")
     finally:
         cursor.close()
         conn.close()
@@ -109,9 +168,9 @@ def add_rating_to_db(movie_id, user_id, score, review_text):
         values = (movie_id, user_id, score, review_text, score, review_text)
         cursor.execute(query, values)
         conn.commit()
-        print(f"⭐ Rating of {score}/5 stars recorded successfully!")
+        print(f" Rating of {score}/5 stars recorded successfully!")
     except Error as e:
-        print(f"❌ Database error while adding rating: {e}")
+        print(f" Database error while adding rating: {e}")
     finally:
         cursor.close()
         conn.close()
@@ -151,7 +210,7 @@ def get_watchlist():
         cursor.execute(query)
         return cursor.fetchall()
     except Error as e:
-        print(f"❌ Error fetching watchlist: {e}")
+        print(f" Error fetching watchlist: {e}")
         return []
     finally:
         cursor.close()
