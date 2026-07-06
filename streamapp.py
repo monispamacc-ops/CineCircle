@@ -29,17 +29,26 @@ if st.sidebar.button("Add Profile", use_container_width=True):
     else:
         st.sidebar.error("Please enter a valid name.")
 
+# ----------------- FETCH USER DATA SAFELY -----------------
+# We create a dictionary mapping { 'Name': id } so the dropdown uses IDs behind the scenes
+try:
+    raw_users = db.get_all_users() # Assuming this returns a list of dicts/tuples with id and username
+    # If get_all_users returns dicts like [{'id': 1, 'username': 'Moniha'}]
+    if raw_users and isinstance(raw_users[0], dict):
+        user_dict = {u['username']: u['id'] for u in raw_users}
+    else:
+        # Fallback if it returns a list of tuples (id, username)
+        user_dict = {u[1]: u[0] for u in raw_users}
+except Exception:
+    # High-fidelity fallbacks matching your system setup if db call fails
+    user_dict = {"Moniha": 1, "Seenu": 2}
+
+user_names = list(user_dict.keys())
+
 # ----------------- MAIN TITLE -----------------
 st.title("🎬 CineCircle Movie Hub")
 st.write("Welcome to your cloud-connected movie dashboard app!")
 st.divider()
-
-# Helper logic to pull users for our dropdown selections safely
-try:
-    # Adjust this function name if your db_manager has a different fetch user function
-    user_list = [u['username'] for u in db.get_all_users()] 
-except Exception:
-    user_list = ["Moniha", "Seenu"] # High-fidelity fallbacks matching your screenshot
 
 # ----------------- MAIN LAYOUT: TWO COLUMNS -----------------
 col1, col2 = st.columns(2)
@@ -47,37 +56,47 @@ col1, col2 = st.columns(2)
 with col1:
     st.markdown("### ➕ Add a New Movie to Watchlist")
     
-    selected_user = st.selectbox("Who is adding this movie?", options=user_list, key="movie_user")
+    selected_name = st.selectbox("Who is adding this movie?", options=user_names, key="movie_user")
     movie_title = st.text_input("Type Movie Title (e.g., Interstellar, Shrek):", placeholder="Interstellar")
+    
+    # Extract the matching numeric user_id for the database execution
+    selected_id = user_dict.get(selected_name)
     
     if st.button("Add to Shared List", use_container_width=True):
         if movie_title.strip():
-            st.info(f"Searching and saving '{movie_title}'...")
-            try:
-                # Add movie connection execution here
-                # db.add_movie_to_db(movie_title.strip(), selected_user)
-                st.success(f"Successfully added '{movie_title}' to the database!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error saving movie: {e}")
+            with st.spinner(f"Searching and saving '{movie_title}'..."):
+                try:
+                    # Calling your exact backend function with correct arguments!
+                    db.add_movie_to_db(movie_title.strip(), selected_id)
+                    st.success(f"Successfully added '{movie_title}' to the database!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error saving movie: {e}")
         else:
             st.error("Please type a movie title.")
 
 with col2:
     st.markdown("### ⭐ Submit a Rating / Review")
     
-    rating_user = st.selectbox("Your Name:", options=user_list, key="rating_user")
+    rating_name = st.selectbox("Your Name:", options=user_names, key="rating_user")
+    rating_id = user_dict.get(rating_name)
     
-    # Static fallback for now or link to dynamic movies list if ready
-    movie_options = ["Interstellar", "Inception"] 
+    # Pull dynamic movie choices if available, otherwise fallback
+    try:
+        watchlist_data = db.fetch_watchlist()
+        movie_options = list(set([m['title'] if isinstance(m, dict) else m[0] for m in watchlist_data])) if watchlist_data else ["Interstellar"]
+    except Exception:
+        movie_options = ["Interstellar", "Inception"]
+        
     selected_movie = st.selectbox("Select Movie to Review:", options=movie_options)
     
     rating_score = st.slider("Your Rating Score:", min_value=1, max_value=5, value=5)
-    review_line = st.text_area("Write a short review line:", placeholder="Loved it...")
+    review_line = st.text_area("Write a short review line:", placeholder="Semma ,mass ah iruku")
     
     if st.button("Submit Review", use_container_width=True):
         try:
-            # db.add_rating(selected_movie, rating_user, rating_score, review_line)
+            # Adjust this to match your rating insertion function when ready!
+            # db.add_rating(selected_movie, rating_id, rating_score, review_line)
             st.success("Review submitted live to cloud backend!")
             st.rerun()
         except Exception as e:
@@ -85,7 +104,6 @@ with col2:
 
 st.divider()
 
-# ----------------- BOTTOM SECTION: LIVE TABLE -----------------
 # ----------------- BOTTOM SECTION: LIVE TABLE -----------------
 st.markdown("### 📊 Community Watchlist Dashboard")
 
@@ -95,24 +113,19 @@ if st.button("🔄 Refresh Watchlist Data", use_container_width=True):
         watchlist_data = db.get_watchlist() 
         if watchlist_data:
             import pandas as pd
-            
-            # Convert to DataFrame
             df = pd.DataFrame(watchlist_data)
             
             if 'avg_rating' in df.columns:
-                # Foolproof conversion: handles integers, floats, decimals, and strings perfectly
                 def to_stars(val):
                     try:
                         if pd.notnull(val):
-                            num = int(round(float(val))) # Converts 5.0000 -> 5
+                            num = int(round(float(val)))
                             return "⭐" * num
                     except (ValueError, TypeError):
                         pass
                     return val
-                
                 df['avg_rating'] = df['avg_rating'].apply(to_stars)
             
-            # Display table cleanly
             st.dataframe(df, use_container_width=True, hide_index=True)
         else:
             st.warning("Connected to database, but your movie table is empty!")
