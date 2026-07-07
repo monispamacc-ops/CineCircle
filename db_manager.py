@@ -292,6 +292,28 @@ def get_watchlist():
     finally:
         cursor.close()
         conn.close()
+
+def get_reviews_for_movie(movie_title):
+    conn = connect_to_db()
+    if not conn: return []
+    try:
+        cursor = conn.cursor(dictionary=True) # Ensure this returns a dict
+        query = """
+        SELECT u.username, r.review_text, r.score 
+        FROM ratings r
+        JOIN users u ON r.user_id = u.user_id
+        JOIN movies m ON r.movie_id = m.movie_id
+        WHERE m.title = %s;
+        """
+        cursor.execute(query, (movie_title,))
+        reviews = cursor.fetchall()
+        return reviews
+    except Exception as e:
+        print(f"Error fetching reviews: {e}")
+        return []
+    finally:
+        cursor.close()
+        conn.close()
 # This block lets us test the code immediately by running this file directly
 if __name__ == "__main__":
     print("--- Running Core Pipeline Test ---")

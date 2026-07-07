@@ -111,7 +111,7 @@ with col2:
         except Exception as e:
             st.error(f"Error deleting review: {e}")
     st.caption("Note: This will only remove your specific rating and comment for this movie.")
-    
+
 st.divider()
 st.markdown("### 🗑️ Delete this movie entirely")
 st.caption("Warning: Deleting a movie will permanently remove the movie title and all associated user ratings from the database.")
@@ -122,6 +122,28 @@ if st.button("Delete This Movie From Dashboard", use_container_width=True):
         st.rerun()
     except Exception as e:
         st.error(f"Error: {e}")
+
+st.divider()
+st.markdown("### 💬 Read User Reviews")
+
+# 1. Fetch titles again to use in the selectbox
+watchlist_data = db.get_watchlist()
+movie_titles = [m['title'] for m in watchlist_data]
+
+# 2. Let the user select a movie
+selected_movie_for_reviews = st.selectbox("Select movie to read reviews:", options=movie_titles)
+
+# 3. Fetch and display the reviews
+reviews = db.get_reviews_for_movie(selected_movie_for_reviews)
+
+if reviews:
+    for r in reviews:
+        # Use an expander or a simple container for each review
+        with st.container(border=True):
+            st.write(f"**{r['username']}** rated it {r['score']}⭐")
+            st.write(f"*{r['review_text']}*")
+else:
+    st.info("No reviews yet for this movie.")
    
 
 # ----------------- BOTTOM SECTION: LIVE TABLE -----------------
