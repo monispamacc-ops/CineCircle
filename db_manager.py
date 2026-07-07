@@ -175,21 +175,79 @@ def add_rating_to_db(movie_id, user_id, score, review_text):
         cursor.close()
         conn.close()
 
-def delete_review(movie_id, user_id):
-    """Deletes a user's review for a specific movie."""
+def add_rating_to_db_by_title(movie_title, user_id, score, review_text):
     conn = connect_to_db()
-    if not conn:
-        return
-
+    if not conn: return
     try:
         cursor = conn.cursor()
-        # Ensure you use movie_id to match your database structure
-        query = "DELETE FROM ratings WHERE movie_id = %s AND user_id = %s"
-        cursor.execute(query, (movie_id, user_id))
-        conn.commit()
-        print("Review deleted successfully!")
-    except Error as e:
-        print(f"Database error while deleting review: {e}")
+        # Look up the ID based on the title
+        cursor.execute("SELECT movie_id FROM movies WHERE title = %s", (movie_title,))
+        result = cursor.fetchone()
+        
+        if result:
+            movie_id = result[0]
+            # Use your existing logic to insert
+            query = """
+            INSERT INTO ratings (movie_id, user_id, score, review_text)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE score=%s, review_text=%s;
+            """
+            values = (movie_id, user_id, score, review_text, score, review_text)
+            cursor.execute(query, values)
+            conn.commit()
+        else:
+            print("Movie not found!")
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+def delete_review_by_title(movie_title, user_id):
+    conn = connect_to_db()
+    if not conn: return
+    try:
+        cursor = conn.cursor()
+        # Find the movie_id first, then delete
+        cursor.execute("SELECT movie_id FROM movies WHERE title = %s", (movie_title,))
+        result = cursor.fetchone()
+        if result:
+            movie_id = result[0]
+            cursor.execute("DELETE FROM ratings WHERE movie_id = %s AND user_id = %s", (movie_id, user_id))
+            conn.commit()
+    except Exception as e:
+        print(f"Error deleting review: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+def delete_movie_and_all_ratings(movie_title):
+    """Deletes all ratings for a movie, then the movie entry itself."""
+    conn = connect_to_db()
+    if not conn: return
+    try:
+        cursor = conn.cursor()
+        
+        # 1. Get the movie_id first to ensure it exists
+        cursor.execute("SELECT movie_id FROM movies WHERE title = %s", (movie_title,))
+        result = cursor.fetchone()
+        
+        if result:
+            movie_id = result[0]
+            
+            # 2. Delete all ratings linked to this movie_id
+            cursor.execute("DELETE FROM ratings WHERE movie_id = %s", (movie_id,))
+            
+            # 3. Now delete the movie record
+            cursor.execute("DELETE FROM movies WHERE movie_id = %s", (movie_id,))
+            
+            conn.commit()
+            print(f"Successfully deleted '{movie_title}' and its ratings.")
+        else:
+            print("Movie not found.")
+            
+    except Exception as e:
+        print(f"Error deleting movie: {e}")
     finally:
         cursor.close()
         conn.close()
@@ -219,12 +277,12 @@ def get_watchlist():
         cursor = conn.cursor(dictionary=True)
         # An elegant SQL JOIN to pull together movies, creators, and their average scores
         query = """
-        SELECT m.title, m.release_year, m.genre, u.username AS added_by,
+        SELECT m.movie_id AS movie_id, m.title, m.release_year, m.genre, u.username AS added_by, 
                ROUND(AVG(r.score), 1) AS avg_rating, COUNT(r.rating_id) AS total_reviews
         FROM movies m
         LEFT JOIN users u ON m.added_by_user_id = u.user_id
         LEFT JOIN ratings r ON m.movie_id = r.movie_id
-        GROUP BY m.movie_id;
+        GROUP BY m.movie_id, m.title, m.release_year, m.genre, u.username;
         """
         cursor.execute(query)
         return cursor.fetchall()

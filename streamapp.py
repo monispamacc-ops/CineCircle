@@ -78,43 +78,51 @@ with col1:
 with col2:
     st.markdown("### ⭐ Submit a Rating / Review")
     
+    # 1. User selection
     rating_name = st.selectbox("Your Name:", options=user_names, key="rating_user")
     rating_id = user_dict.get(rating_name)
     
-    # 1. Map movie titles to IDs for the database
-    try:
-        watchlist_data = db.get_watchlist()
-        # Create a dictionary: { 'Title': 'ID' }
-        movie_dict = {m['title']: m['id'] for m in watchlist_data}
-        movie_options = list(movie_dict.keys())
-    except Exception:
-        movie_dict = {"Interstellar": 1, "Inception": 2}
-        movie_options = list(movie_dict.keys())
-
-    selected_movie_title = st.selectbox("Select Movie to Review:", options=movie_options)
-    selected_movie_id = movie_dict.get(selected_movie_title)
+    # 2. Movie selection (Using title because movie_id is not returning)
+    watchlist_data = db.get_watchlist()
+    movie_titles = [m['title'] for m in watchlist_data]
+    selected_movie_title = st.selectbox("Select Movie to Review:", options=movie_titles)
     
+    # 3. Rating and Review inputs
     rating_score = st.slider("Your Rating Score:", min_value=1, max_value=5, value=5)
     review_line = st.text_area("Write a short review line:", placeholder="Semma ,mass ah iruku")
-    
-    # 2. Updated Submit button
+
+    # 4. Submit button
     if st.button("Submit Review", use_container_width=True):
         try:
-            db.add_rating_to_db(selected_movie_id, rating_id, rating_score, review_line)
-            st.success("Review submitted live to cloud backend!")
+            # Pass the title to a function that handles looking up the ID internally
+            db.add_rating_to_db_by_title(selected_movie_title, rating_id, rating_score, review_line)
+            st.success("Review submitted!")
             st.rerun()
         except Exception as e:
-            st.error(f"Error submitting review: {e}")
-
-    # 3. New Delete button
+            st.error(f"Error: {e}")
+    
+    # 5. Delete Review button
     if st.button("Delete My Review", use_container_width=True):
         try:
-            db.delete_review(selected_movie_id, rating_id)
+            # We use the title to delete, matching our new db function
+            db.delete_review_by_title(selected_movie_title, rating_id)
             st.warning(f"Review for '{selected_movie_title}' deleted.")
             st.rerun()
         except Exception as e:
             st.error(f"Error deleting review: {e}")
+    st.caption("Note: This will only remove your specific rating and comment for this movie.")
+    
 st.divider()
+st.markdown("### 🗑️ Delete this movie entirely")
+st.caption("Warning: Deleting a movie will permanently remove the movie title and all associated user ratings from the database.")
+if st.button("Delete This Movie From Dashboard", use_container_width=True):
+    try:
+        db.delete_movie_and_all_ratings(selected_movie_title)
+        st.success(f"'{selected_movie_title}' has been removed from the dashboard.")
+        st.rerun()
+    except Exception as e:
+        st.error(f"Error: {e}")
+   
 
 # ----------------- BOTTOM SECTION: LIVE TABLE -----------------
 st.markdown("### 📊 Community Watchlist Dashboard")
